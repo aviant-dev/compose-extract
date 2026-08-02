@@ -4,16 +4,29 @@
     <name>compose-extract</name>
     <vendor>aviant-dev</vendor>
     <description><![CDATA[
-        <p><b>compose-extract</b> is a repository that provides a pure template to make it easier to create a new plugin project.</p>
-        <p>The main goal of this template is to speed up the setup phase of plugin development for both new and experienced developers by preconfiguring the project scaffold and CI, linking to the proper documentation pages, and keeping everything organized.</p>
+        <p><b>compose-extract</b> is an Android Studio plugin that helps developers analyze and extract Jetpack Compose functions using Kotlin K2 PSI APIs.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.kotlin</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
-    <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.aviantdev.composeextract.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-        <postStartupActivity implementation="com.github.aviantdev.composeextract.startup.MyProjectActivity" />
-    </extensions>
+    <actions>
+        <action id="com.github.aviantdev.composeextract.intensions.ExtractComposableIntension"
+                class="com.github.aviantdev.composeextract.intensions.ExtractComposableIntension"
+                text="Extract Composable Function"
+                description="Analyze current Jetpack Compose code block">
+
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+
+            <!-- Windows / Linux (Ctrl + Alt + E) -->
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt E"/>
+
+            <!-- macOS (Cmd + Option + E) -->
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt E"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta alt E"/>
+        </action>
+    </actions>
+
 </idea-plugin>
