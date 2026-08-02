@@ -12,21 +12,11 @@
 
     <resource-bundle>messages.MyBundle</resource-bundle>
 
-    <actions>
-        <action id="com.github.aviantdev.composeextract.intensions.ExtractComposableIntension"
-                class="com.github.aviantdev.composeextract.intensions.ExtractComposableIntension"
-                text="Extract Composable Function"
-                description="Analyze current Jetpack Compose code block">
-
-            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
-
-            <!-- Windows / Linux (Ctrl + Alt + E) -->
-            <keyboard-shortcut keymap="$default" first-keystroke="control alt E"/>
-
-            <!-- macOS (Cmd + Option + E) -->
-            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt E"/>
-            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta alt E"/>
-        </action>
-    </actions>
+    <extensions defaultExtensionNs="com.intellij">
+        <intentionAction>
+            <className>com.github.aviantdev.composeextract.intentions.ExtractComposableIntention</className>
+            <category>Compose</category>
+        </intentionAction>
+    </extensions>
 
 </idea-plugin>
