@@ -20,7 +20,9 @@ dependencies {
         }
 
         bundledPlugin("org.jetbrains.kotlin")
+
         testFramework(TestFrameworkType.Platform)
+        testFramework(TestFrameworkType.Plugin.Java)
 
     }
 }
