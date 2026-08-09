@@ -35,6 +35,12 @@ class ComposeModifierInjector {
     // If existing modifier arg is found, chain it
     if (existingModifierArg != null) {
       val existingExpr = existingModifierArg.getArgumentExpression()?.text ?: return
+
+      // Avoid wrapping if the expression is already 'modifier'
+      if (existingExpr == MODIFIER_PARAM_NAME) {
+        return
+      }
+
       val chainedExpr = psiFactory.createExpression("$MODIFIER_PARAM_NAME.then($existingExpr)")
       existingModifierArg.getArgumentExpression()?.replace(chainedExpr)
     } else {
