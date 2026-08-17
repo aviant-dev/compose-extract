@@ -1,5 +1,6 @@
 package com.github.aviantdev.composeextract.core.generator
 
+import com.github.aviantdev.composeextract.core.psi.addImportPathIfMissing
 import org.jetbrains.kotlin.psi.KtCallableDeclaration
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
@@ -53,7 +54,7 @@ class ImportResolver {
 
     // Inject missing imports
     for (importPathStr in importsToAdd) {
-      addImportIfMissing(psiFactory, targetFile, importPathStr)
+      targetFile.addImportPathIfMissing(importPathStr, psiFactory)
     }
   }
 
@@ -104,35 +105,5 @@ class ImportResolver {
       val aliasName = directive.aliasName
       if (aliasName != null) "$fqName as $aliasName" else fqName
     }.toSet()
-  }
-
-  private fun addImportIfMissing(psiFactory: KtPsiFactory, file: KtFile, importPathStr: String) {
-    val existing = getExistingImportPaths(file)
-    if (existing.contains(importPathStr)) return
-
-    val dummyFile = psiFactory.createFile("import $importPathStr")
-    val importDirective = dummyFile.importDirectives.firstOrNull() ?: return
-    val importList = file.importList
-
-    if (importList != null) {
-      importList.add(psiFactory.createNewLine())
-      importList.add(importDirective)
-    } else {
-      // Header Anchor Insertion Logic
-      val packageDirective = file.packageDirective
-      if (packageDirective != null && packageDirective.text.isNotEmpty()) {
-        val addedDirective = file.addAfter(importDirective, packageDirective)
-        file.addBefore(psiFactory.createNewLine(), addedDirective)
-        file.addAfter(psiFactory.createNewLine(), addedDirective)
-      } else {
-        val firstChild = file.firstChild
-        if (firstChild != null) {
-          file.addBefore(importDirective, firstChild)
-          file.addBefore(psiFactory.createNewLine(), firstChild)
-        } else {
-          file.add(importDirective)
-        }
-      }
-    }
   }
 }
