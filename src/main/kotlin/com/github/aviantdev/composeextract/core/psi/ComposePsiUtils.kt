@@ -32,7 +32,22 @@ fun KtFile.hasImport(fqName: String): Boolean =
 fun KtFile.addImportIfMissing(fqName: String, psiFactory: KtPsiFactory) {
   if (hasImport(fqName)) return
 
-  val dummyFile = psiFactory.createFile("import $fqName")
+  addImportPathIfMissing(fqName, psiFactory)
+}
+
+/**
+ * Automatically inserts an import directive into the KtFile if missing, preserving aliases.
+ */
+fun KtFile.addImportPathIfMissing(importPath: String, psiFactory: KtPsiFactory) {
+  val existingImportPaths = importDirectives.mapNotNull { directive ->
+    val importedFqName = directive.importedFqName?.asString() ?: return@mapNotNull null
+    val aliasName = directive.aliasName
+    if (aliasName != null) "$importedFqName as $aliasName" else importedFqName
+  }.toSet()
+
+  if (existingImportPaths.contains(importPath)) return
+
+  val dummyFile = psiFactory.createFile("import $importPath")
   val importDirective = dummyFile.importDirectives.firstOrNull() ?: return
   val targetImportList = this.importList
 
