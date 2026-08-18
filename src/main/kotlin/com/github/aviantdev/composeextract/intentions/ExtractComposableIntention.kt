@@ -5,9 +5,10 @@ import com.github.aviantdev.composeextract.core.analysis.VariableUsageVisitor
 import com.github.aviantdev.composeextract.core.generator.CallSiteReplacer
 import com.github.aviantdev.composeextract.core.generator.ComposableGenerator
 import com.github.aviantdev.composeextract.core.generator.ImportResolver
-import com.github.aviantdev.composeextract.core.model.VisibilityModifier
 import com.github.aviantdev.composeextract.core.psi.isComposable
+import com.github.aviantdev.composeextract.ui.ExtractComposableDialog
 import com.intellij.codeInsight.intention.PsiElementBaseIntentionAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiElement
@@ -38,6 +39,11 @@ class ExtractComposableIntention : PsiElementBaseIntentionAction() {
 
   override fun invoke(project: Project, editor: Editor?, element: PsiElement) {
     if (editor == null) return
+    val dialog = ExtractComposableDialog(project)
+    if (!dialog.showAndGet()) return
+
+    val config = dialog.config ?: return
+
     val psiFile = element.containingFile as? KtFile ?: return
     val currentFunction = element.getParentOfType<KtFunction>(strict = false) ?: return
     if (!currentFunction.isComposable()) return
@@ -47,37 +53,40 @@ class ExtractComposableIntention : PsiElementBaseIntentionAction() {
 
     val externalVars = VariableUsageVisitor(selectedElements).analyze()
     val psiFactory = KtPsiFactory(project)
-    val extractedFunctionName = "ExtractedWidget"
 
-    // Resolve & inject missing imports
-    importResolver.resolveAndInjectImports(
-      psiFactory = psiFactory,
-      targetFile = psiFile,
-      parameters = externalVars,
-      includeModifier = true
-    )
+    WriteCommandAction.runWriteCommandAction(project) {
+      if (!psiFile.isValid || !currentFunction.isValid) return@runWriteCommandAction
 
-    // Generate new @Composable KtFunction
-    val newFunction = generator.generateComposable(
-      psiFactory = psiFactory,
-      functionName = extractedFunctionName,
-      visibility = VisibilityModifier.PRIVATE,
-      parameters = externalVars,
-      bodyElements = selectedElements,
-      includeModifier = true
-    )
+      // Resolve & inject missing imports
+      importResolver.resolveAndInjectImports(
+        psiFactory = psiFactory,
+        targetFile = psiFile,
+        parameters = externalVars,
+        includeModifier = config.includeModifier
+      )
 
-    // Add generated function after current Composable
-    currentFunction.parent.addAfter(newFunction, currentFunction)
+      // Generate new @Composable KtFunction
+      val newFunction = generator.generateComposable(
+        psiFactory = psiFactory,
+        functionName = config.composableName,
+        visibility = config.visibility,
+        parameters = externalVars,
+        bodyElements = selectedElements,
+        includeModifier = config.includeModifier
+      )
 
-    // Replace call-site selection with new function invocation
-    callSiteReplacer.replaceCallSite(
-      psiFactory = psiFactory,
-      functionName = extractedFunctionName,
-      parameters = externalVars,
-      selectedElements = selectedElements
-    )
+      // Add generated function after current Composable
+      currentFunction.parent.addAfter(newFunction, currentFunction)
+
+      // Replace call-site selection with new function invocation
+      callSiteReplacer.replaceCallSite(
+        psiFactory = psiFactory,
+        functionName = config.composableName,
+        parameters = externalVars,
+        selectedElements = selectedElements
+      )
+    }
   }
 
-  override fun startInWriteAction(): Boolean = true
+  override fun startInWriteAction(): Boolean = false
 }
