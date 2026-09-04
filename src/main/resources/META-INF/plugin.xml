@@ -26,7 +26,8 @@
                 class="com.github.aviantdev.composeextract.actions.ExtractComposableAction"
                 text="Extract Composable function"
                 description="Extract the current Compose selection into a new composable">
-            <add-to-group group-id="RefactoringMenu" anchor="after" relative-to-action="ExtractMethod"/>
+            <add-to-group group-id="IntroduceActionsGroup" anchor="after" relative-to-action="ExtractMethod"/>
+            <add-to-group group-id="Floating.CodeToolbar.Extract" anchor="after" relative-to-action="ExtractMethod"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt E"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt E"/>
         </action>
