@@ -105,4 +105,27 @@ class SelectionInspectorTest : LightJavaCodeInsightFixtureTestCase() {
     assertEquals(2, elements.size)
     assertTrue(elements.all { it is KtCallExpression })
   }
+
+  fun testExplicitSelectionOnNestedTextCall() {
+    val code = """
+            package com.example
+
+            import androidx.compose.runtime.Composable
+            import androidx.compose.foundation.layout.Column
+            import androidx.compose.material3.Text
+
+            @Composable
+            private fun Test() {
+                Column {
+                    <selection>Text(text = "Abcd")</selection>
+                }
+            }
+        """.trimIndent()
+
+    val file = myFixture.configureByText("Sample.kt", code) as KtFile
+    val elements = inspector.inspect(file, myFixture.editor)
+
+    assertEquals(1, elements.size)
+    assertEquals("Text(text = \"Abcd\")", elements.single().text)
+  }
 }

@@ -16,7 +16,20 @@
         <intentionAction>
             <className>com.github.aviantdev.composeextract.intentions.ExtractComposableIntention</className>
             <category>Compose</category>
+            <descriptionDirectoryName>ExtractComposableIntention</descriptionDirectoryName>
+            <skipBeforeAfter>true</skipBeforeAfter>
         </intentionAction>
     </extensions>
+
+    <actions>
+        <action id="ComposeExtract.ExtractComposable"
+                class="com.github.aviantdev.composeextract.actions.ExtractComposableAction"
+                text="Extract Composable function"
+                description="Extract the current Compose selection into a new composable">
+            <add-to-group group-id="RefactoringMenu" anchor="after" relative-to-action="ExtractMethod"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt E"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt E"/>
+        </action>
+    </actions>
 
 </idea-plugin>
