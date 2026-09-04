@@ -4,6 +4,7 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.psi.KtDestructuringDeclarationEntry
+import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -16,8 +17,11 @@ import org.jetbrains.kotlin.psi.KtValueArgumentName
  * (parameters, local properties, callbacks) that must be hoisted as parameters.
  */
 class VariableUsageVisitor(
-  private val selectedElements: List<PsiElement>
+  private val selectedElements: List<PsiElement>,
+  private val excludedElements: Set<PsiElement>
 ) : KtTreeVisitorVoid() {
+
+  constructor(selectedElements: List<PsiElement>) : this(selectedElements, emptySet())
 
   private val externalVariables = linkedSetOf<KtNamedDeclaration>()
 
@@ -42,6 +46,11 @@ class VariableUsageVisitor(
     if (isHoistableVariable(resolvedTarget) && !isDeclaredInsideSelection(resolvedTarget)) {
       externalVariables.add(resolvedTarget)
     }
+  }
+
+  override fun visitKtElement(element: KtElement) {
+    if (element in excludedElements) return
+    super.visitKtElement(element)
   }
 
   // Determines whether a declaration is a candidate for parameter hoisting (lambda parameters or local variables)

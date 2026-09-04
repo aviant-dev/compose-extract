@@ -25,4 +25,26 @@ class ExtractComposableActionHandlerTest : LightJavaCodeInsightFixtureTestCase()
 
     assertTrue(ExtractComposableActionHandler.isAvailable(file, myFixture.editor))
   }
+
+  fun testIsAvailableInsideLazyListItem() {
+    val code = """
+            package com.example
+
+            import androidx.compose.foundation.lazy.LazyColumn
+            import androidx.compose.foundation.layout.Column
+            import androidx.compose.runtime.Composable
+
+            private fun LazyListScope.topicBody(imageUrl: String) {
+                item {
+                    Column {
+                        <selection>DynamicAsyncImage(imageUrl = imageUrl)</selection>
+                    }
+                }
+            }
+        """.trimIndent()
+
+    val file = myFixture.configureByText("Sample.kt", code) as KtFile
+
+    assertTrue(ExtractComposableActionHandler.isAvailable(file, myFixture.editor))
+  }
 }

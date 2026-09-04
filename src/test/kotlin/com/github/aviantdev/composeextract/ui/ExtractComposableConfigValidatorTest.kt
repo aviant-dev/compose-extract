@@ -41,4 +41,21 @@ class ExtractComposableConfigValidatorTest {
     assertEquals(VisibilityModifier.PUBLIC, crossModuleConfig?.visibility)
     assertEquals(false, sameModuleConfig?.includeModifier)
   }
+
+  @Test
+  fun `builds cross module config with target location`() {
+    val config = validator.buildConfig(
+      composableName = "DesignSystemCard",
+      destination = TargetDestination.NEW_FILE_DIFFERENT_MODULE,
+      includeModifier = true,
+      targetModuleName = "design-system",
+      targetPackageName = "com.example.design.components",
+      targetDirectoryPath = "/project/design-system/src/main/kotlin/com/example/design/components"
+    )
+
+    assertNotNull(config)
+    assertEquals("design-system", config?.targetModuleName)
+    assertEquals("com.example.design.components", config?.targetPackageName)
+    assertEquals("/project/design-system/src/main/kotlin/com/example/design/components", config?.targetDirectoryPath)
+  }
 }
