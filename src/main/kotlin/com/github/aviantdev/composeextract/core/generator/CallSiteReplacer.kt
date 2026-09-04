@@ -26,11 +26,27 @@ class CallSiteReplacer {
     parameters: Collection<KtNamedDeclaration>,
     selectedElements: List<PsiElement>,
     callerHasModifier: Boolean = callerHasModifierInScope(selectedElements)
+  ): KtCallExpression? = replaceCallSite(
+    psiFactory = psiFactory,
+    functionName = functionName,
+    parameters = parameters,
+    selectedElements = selectedElements,
+    callerHasModifier = callerHasModifier,
+    hoistedModifier = null
+  )
+
+  fun replaceCallSite(
+    psiFactory: KtPsiFactory,
+    functionName: String,
+    parameters: Collection<KtNamedDeclaration>,
+    selectedElements: List<PsiElement>,
+    callerHasModifier: Boolean,
+    hoistedModifier: String? = null
   ): KtCallExpression? {
     val validElements = selectedElements.filterIsInstance<KtElement>()
     if (validElements.isEmpty()) return null
 
-    val arguments = buildCallArguments(parameters, callerHasModifier)
+    val arguments = buildCallArguments(parameters, callerHasModifier, hoistedModifier)
 
     val callText = if (arguments.size >= 2) {
       "$functionName(\n${arguments.joinToString(",\n")}\n)"
@@ -58,7 +74,8 @@ class CallSiteReplacer {
 
   private fun buildCallArguments(
     parameters: Collection<KtNamedDeclaration>,
-    callerHasModifier: Boolean
+    callerHasModifier: Boolean,
+    hoistedModifier: String?
   ): List<String> {
     val requiredArgs = mutableListOf<String>()
     val modifierArg = mutableListOf<String>()
@@ -81,7 +98,11 @@ class CallSiteReplacer {
 
     val result = mutableListOf<String>()
     result.addAll(requiredArgs)
-    result.addAll(modifierArg)
+    if (hoistedModifier != null) {
+      result.add("${ComposeModifierInjector.MODIFIER_PARAM_NAME} = $hoistedModifier")
+    } else {
+      result.addAll(modifierArg)
+    }
     result.addAll(lambdaArgs)
     return result
   }

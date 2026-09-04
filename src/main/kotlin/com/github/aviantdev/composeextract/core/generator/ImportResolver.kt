@@ -58,6 +58,22 @@ class ImportResolver {
     }
   }
 
+  /**
+   * Copies source imports when an extracted composable is written to another file.
+   * This preserves imports used by the extracted body as well as parameter types.
+   */
+  fun copyMissingImports(
+    psiFactory: KtPsiFactory,
+    sourceFile: KtFile,
+    targetFile: KtFile
+  ) {
+    for (directive in sourceFile.importDirectives) {
+      val fqName = directive.importedFqName?.asString() ?: continue
+      val importPath = directive.aliasName?.let { "$fqName as $it" } ?: fqName
+      targetFile.addImportPathIfMissing(importPath, psiFactory)
+    }
+  }
+
   private fun extractTypeShortNamesFromParameters(parameters: Collection<KtNamedDeclaration>): Set<String> {
     val shortNames = mutableSetOf<String>()
 

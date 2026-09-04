@@ -62,6 +62,14 @@ class ComposeModifierInjector {
     }
   }
 
+  /** Replaces an existing root modifier expression with the generated modifier parameter. */
+  fun replaceRootModifierWithParameter(psiFactory: KtPsiFactory, rootCall: KtCallExpression): Boolean {
+    val modifierArgument = rootCall.valueArguments.firstOrNull { isModifierArgument(it) } ?: return false
+    val modifierParameter = psiFactory.createExpression(MODIFIER_PARAM_NAME)
+    modifierArgument.getArgumentExpression()?.replace(modifierParameter)
+    return true
+  }
+
   // Checks if a value argument is a modifier (either named or positional)
   private fun isModifierArgument(arg: KtValueArgument): Boolean {
     if (arg.isNamed()) {

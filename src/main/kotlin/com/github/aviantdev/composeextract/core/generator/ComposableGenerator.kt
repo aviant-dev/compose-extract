@@ -30,10 +30,48 @@ class ComposableGenerator(
     parameters: Collection<KtNamedDeclaration>,
     bodyElements: List<PsiElement>,
     includeModifier: Boolean = true
+  ): KtFunction = generateComposable(
+    psiFactory = psiFactory,
+    functionName = functionName,
+    visibility = visibility,
+    parameters = parameters,
+    bodyElements = bodyElements,
+    includeModifier = includeModifier,
+    targetFile = null
+  )
+
+  fun generateComposable(
+    psiFactory: KtPsiFactory,
+    functionName: String,
+    visibility: VisibilityModifier,
+    parameters: Collection<KtNamedDeclaration>,
+    bodyElements: List<PsiElement>,
+    includeModifier: Boolean,
+    targetFile: KtFile?
+  ): KtFunction = generateComposable(
+    psiFactory = psiFactory,
+    functionName = functionName,
+    visibility = visibility,
+    parameters = parameters,
+    bodyElements = bodyElements,
+    includeModifier = includeModifier,
+    targetFile = targetFile,
+    hoistRootModifier = false
+  )
+
+  fun generateComposable(
+    psiFactory: KtPsiFactory,
+    functionName: String,
+    visibility: VisibilityModifier,
+    parameters: Collection<KtNamedDeclaration>,
+    bodyElements: List<PsiElement>,
+    includeModifier: Boolean,
+    targetFile: KtFile?,
+    hoistRootModifier: Boolean
   ): KtFunction {
     // Automatically resolve target file and project code style settings
-    val targetFile = bodyElements.firstOrNull()?.containingFile as? KtFile
-    val indentSize = targetFile?.let { CodeStyle.getIndentOptions(it).INDENT_SIZE } ?: 4
+    val codeStyleFile = targetFile ?: bodyElements.firstOrNull()?.containingFile as? KtFile
+    val indentSize = codeStyleFile?.let { CodeStyle.getIndentOptions(it).INDENT_SIZE } ?: 4
     val indent = " ".repeat(indentSize)
 
     val paramSpecs = buildParameterSignatures(parameters, includeModifier)
@@ -61,7 +99,11 @@ $bodyText
 
     val generatedFunction = psiFactory.createFunction(functionTemplate)
 
-    if (includeModifier) {
+    if (hoistRootModifier) {
+      findTargetRootCall(generatedFunction)?.let { rootCall ->
+        modifierInjector.replaceRootModifierWithParameter(psiFactory, rootCall)
+      }
+    } else if (includeModifier) {
       val rootCall = findTargetRootCall(generatedFunction)
       if (rootCall != null && canAcceptModifier(rootCall)) {
         modifierInjector.injectModifierToRootCall(psiFactory, rootCall)
