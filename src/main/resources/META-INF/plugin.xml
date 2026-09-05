@@ -4,13 +4,18 @@
     <name>compose-extract</name>
     <vendor>aviant-dev</vendor>
     <description><![CDATA[
-        <p><b>compose-extract</b> is an Android Studio plugin that helps developers analyze and extract Jetpack Compose functions using Kotlin K2 PSI APIs.</p>
+        <p><b>compose-extract</b> is an Android Studio plugin that helps developers analyze and extract Jetpack Compose functions using Kotlin PSI and reference APIs.</p>
+        <p>Requires Android Studio Ladybug 2024.2.1 or IntelliJ IDEA 2024.2.1, with the bundled Kotlin plugin enabled and the IDE's bundled Java 21 runtime. Supports Kotlin K1 and K2 modes.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.kotlin</depends>
 
     <resource-bundle>messages.MyBundle</resource-bundle>
+
+    <extensions defaultExtensionNs="org.jetbrains.kotlin">
+        <supportsKotlinPluginMode supportsK1="true" supportsK2="true" />
+    </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
         <intentionAction>
