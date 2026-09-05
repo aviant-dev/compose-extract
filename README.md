@@ -1,45 +1,96 @@
-# compose-extract
+# Compose Extract - Jetpack Compose Refactoring Plugin
 
-![Build](https://github.com/aviant-dev/compose-extract/workflows/Build/badge.svg)
-[![Version](https://img.shields.io/jetbrains/plugin/v/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
+An Android Studio and IntelliJ IDEA plugin designed to automate architectural Jetpack Compose refactoring, focusing on composable component extraction, state hoisting, and automated parameter/import resolution.
 
-## Template ToDo list
-- [x] Create a new [IntelliJ Platform Plugin Template][template] project.
-- [ ] Get familiar with the [template documentation][template].
-- [ ] Adjust the [group](./gradle.properties), as well as the [id](./src/main/resources/META-INF/plugin.xml), [name](./src/main/resources/META-INF/plugin.xml), and [sources package](./src/main/kotlin).
-- [ ] Adjust the plugin [description](./src/main/resources/META-INF/plugin.xml) (see [Tips][docs:plugin-description]) and this README to describe what your plugin does.
-- [ ] Review the [Legal Agreements](https://plugins.jetbrains.com/docs/marketplace/legal-agreements.html?from=IJPluginTemplate).
-- [ ] [Publish a plugin manually](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html?from=IJPluginTemplate) for the first time.
-- [ ] Set the `MARKETPLACE_ID` in the above README badges. You can obtain it once the plugin is published to JetBrains Marketplace.
-- [ ] Set the [Plugin Signing](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html?from=IJPluginTemplate) related [secrets](https://github.com/JetBrains/intellij-platform-plugin-template#environment-variables).
-- [ ] Set the [Deployment Token](https://plugins.jetbrains.com/docs/marketplace/plugin-upload.html?from=IJPluginTemplate).
-- [ ] Click the <kbd>Watch</kbd> button on the top of the [IntelliJ Platform Plugin Template][template] to be notified about releases containing new features and fixes.
+---
 
-This Fancy IntelliJ Platform Plugin is going to be your implementation of the brilliant ideas that you have.
+## Features
+
+* **Instant Composable Extraction**: Highlight any Compose UI block and extract it into a decoupled `@Composable` component using `Cmd + Option + E` (macOS) / `Ctrl + Alt + E` (Windows/Linux) or `Alt + Enter` (Context Action).
+* **Smart Scope & Visibility Resolution**: Automatically applies the appropriate visibility modifier based on the destination:
+    * **Same File**: `private` (keeps UI component encapsulated).
+    * **New File (Same Module)**: `internal` (module-level sharing).
+    * **New File (External/Design System Module)**: `public` (cross-module access).
+* **Interactive Refactoring Dialog**: Built with Kotlin UI DSL v2 featuring real-time `PascalCase` function name validation, target module selection with an IDE-native tree directory picker, and `Modifier` parameter toggles.
+* **Pure AST Mutation Engine**: Safe code mutation using Kotlin PSI (`KtPsiFactory`):
+    * Auto-detects external variables and hoists them into parameters.
+    * Standardizes parameter ordering (`Required -> Modifier -> Lambda`).
+    * Injects `Modifier` chaining (`modifier.then(...)`) into the root layout element.
+    * Automatically resolves and injects missing imports (`@Composable`, `Modifier`, Data Classes).
+* **Atomic Multi-File Operations**: All refactoring actions (creating files, updating call-sites, adjusting imports) are wrapped in a single transaction, supporting complete single-step Undo/Redo (`Cmd + Z`).
+
+---
+
+## Compatibility
+
+| Component | Minimum Supported Version | Reason / Requirement |
+| :--- | :--- | :--- |
+| **Android Studio** | Koala (2024.1.1+) / Build 241+ | Uses IntelliJ Platform SDK refactoring pipelines |
+| **Kotlin Compiler** | K1 and K2 | K1 and K2 modes are declared supported |
+| **JDK** | Java JDK 21 | Use the version bundled with the supported IDE; it must be enabled |
+| **Jetpack Compose** | 1.6.0+ | Supports modern `Modifier.Node` layout constructs |
+
+---
+
+## Usage Guide
+
+1. Open any Kotlin file containing Jetpack Compose code.
+2. Highlight the UI code block you want to extract.
+3. Trigger the extraction dialog through any of these methods:
+    * **Keyboard Shortcut**: `Cmd + Option + E` (macOS) / `Ctrl + Alt + E` (Windows/Linux).
+    * **Refactor Menu**: Right-click selection -> **Refactor** -> **Composable...**
+    * **Floating Toolbar / Quick Fix**: Press `Alt + Enter` -> Select **Extract Composable Component**.
+4. Configure your component in the Refactoring Dialog:
+    * Enter the **Composable Name** (must start with an uppercase letter).
+    * Choose **Target Destination** (`Same File` or `New File`).
+    * Select target directory using the native IDE Tree Picker.
+    * Toggle `Include Modifier parameter` as needed.
+5. Press **OK** or hit `Enter` to execute the transformation.
+
+---
 
 ## Installation
 
-- Using the IDE built-in plugin system:
+### Install from ZIP (Local Build)
 
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "compose-extract"</kbd> >
-  <kbd>Install</kbd>
-
-- Using JetBrains Marketplace:
-
-  Go to [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID) and install it by clicking the <kbd>Install to ...</kbd> button in case your IDE is running.
-
-  You can also download the [latest release](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID/versions) from JetBrains Marketplace and install it manually using
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
-
-- Manually:
-
-  Download the [latest release](https://github.com/aviant-dev/compose-extract/releases/latest) and install it manually using
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
-
+1. Download the latest `compose-extract-x.x.x.zip` release from the Releases tab.
+2. Open **Android Studio**.
+3. Go to **Settings/Preferences** -> **Plugins**.
+4. Click the gear icon in the top-right corner and select **Install Plugin from Disk...**.
+5. Select the downloaded `.zip` file and restart the IDE.
 
 ---
-Plugin based on the [IntelliJ Platform Plugin Template][template].
 
-[template]: https://github.com/JetBrains/intellij-platform-plugin-template
-[docs:plugin-description]: https://plugins.jetbrains.com/docs/intellij/plugin-user-experience.html#plugin-description-and-presentation
+## Building from Source
+
+To build and test the plugin locally:
+
+```bash
+# Clone the repository
+git clone https://github.com/aviant-dev/compose-extract.git
+cd compose-extract
+
+# Run Sandboxed Android Studio / IntelliJ instance with plugin pre-loaded
+./gradlew runIde
+
+# Build distribution ZIP package
+./gradlew buildPlugin
+```
+
+The output file will be generated at `build/distributions/compose-extract-x.x.x.zip`.
+
+---
+
+## Running Tests
+
+Execute the unit test suite covering AST mutations, selection analysis, and dialog validations:
+
+```bash
+./gradlew test
+```
+
+---
+
+## License
+
+This project is licensed under the MIT License — see the LICENSE file for details.
