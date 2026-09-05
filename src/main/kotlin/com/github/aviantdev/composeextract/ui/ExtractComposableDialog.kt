@@ -4,11 +4,14 @@ import com.github.aviantdev.composeextract.core.analysis.TargetScopeResolver
 import com.github.aviantdev.composeextract.core.model.ExtractComposableConfig
 import com.github.aviantdev.composeextract.core.model.TargetDestination
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.fileChooser.FileChooser
+import com.intellij.openapi.fileChooser.FileChooserDescriptor
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
+import com.intellij.openapi.fileChooser.ex.FileChooserDialogImpl
+import com.intellij.openapi.fileChooser.ex.FileSystemTreeImpl
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.project.guessProjectDir
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.ComponentValidator
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
@@ -17,15 +20,23 @@ import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.util.Alarm
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.FileColorManager
+import com.intellij.ui.treeStructure.Tree
+import com.intellij.util.IconUtil
+import java.awt.Color
+import javax.swing.Icon
 import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JTextField
+import javax.swing.tree.TreePath
 
 class ExtractComposableDialog(
   private val project: Project,
@@ -41,6 +52,7 @@ class ExtractComposableDialog(
   private var targetModuleName: String = ""
   private var targetPackageName: String = ""
   private var targetDirectoryPath: String = ""
+  private val projectDirectory = project.guessProjectDir()
 
   private lateinit var destinationComboBox: JComboBox<TargetDestination>
   private lateinit var visibilityValueLabel: JLabel
@@ -74,11 +86,52 @@ class ExtractComposableDialog(
     }
 
     row("Target folder:") {
-      targetFolderField = TextFieldWithBrowseButton().apply {
-        textField.isEditable = false
-        addActionListener { chooseTargetFolder() }
+      val descriptor = object : FileChooserDescriptor(FileChooserDescriptorFactory.createSingleFolderDescriptor()) {
+        // Pass the project so the IDE's icon providers can recognize modules, source roots and packages.
+        override fun getIcon(file: VirtualFile): Icon = IconUtil.getIcon(file, 0, project)
+      }.apply {
+        title = "Select target folder"
+        description = "Choose a folder inside the destination module's source root."
+        isForcedToUseIdeaFileChooser = true
+        projectDirectory?.let { setRoots(it) }
+        isShowFileSystemRoots = false
+        withTreeRootVisible(true)
       }
-      cell(targetFolderField).align(AlignX.FILL)
+      // Create the component without the DSL helper's default file-chooser listener.
+      // The custom listener below opens the IDE directory tree directly.
+      targetFolderField = cell(TextFieldWithBrowseButton())
+        .align(AlignX.FILL)
+        .bindText(::targetDirectoryPath)
+        .component
+      targetFolderField.textField.isEditable = false
+      targetFolderField.addActionListener {
+        val root = projectDirectory
+        if (root == null) {
+          Messages.showErrorDialog(project, "Cannot locate the active project directory.", "Extract Composable")
+          return@addActionListener
+        }
+        val initialDirectory = targetDirectoryPath.takeIf { it.isNotBlank() }
+          ?.let { LocalFileSystem.getInstance().findFileByPath(it) }
+          ?.takeIf { it.isValid && it.isDirectory && VfsUtilCore.isAncestor(root, it, false) }
+          ?: root
+        val chooser = object : FileChooserDialogImpl(descriptor, targetFolderField, project) {
+          override fun createInternalTree(): Tree = object : Tree() {
+            override fun isFileColorsEnabled(): Boolean {
+              val colors = FileColorManager.getInstance(project)
+              return colors.isEnabled && colors.isEnabledForProjectView
+            }
+
+            override fun getFileColorForPath(path: TreePath): Color? {
+              if (!isFileColorsEnabled) return null
+              val file = FileSystemTreeImpl.getVirtualFile(path) ?: return null
+              return FileColorManager.getInstance(project).getFileColor(file)
+            }
+          }
+        }
+        val directory = chooser.choose(project, initialDirectory)
+          .singleOrNull() ?: return@addActionListener
+        targetFolderField.text = selectTargetFolder(directory)
+      }
     }
 
     row("Target file:") {
@@ -171,27 +224,27 @@ class ExtractComposableDialog(
     updateTargetFilePath()
   }
 
-  private fun chooseTargetFolder() {
-    val descriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()
-    descriptor.title = "Select target folder"
-    descriptor.description = "Choose a folder inside the destination module's source root."
-    FileChooser.chooseFile(descriptor, project, null) { directory ->
-      val targetModule = ModuleUtilCore.findModuleForFile(directory, project)
-      val fileIndex = com.intellij.openapi.roots.ProjectRootManager.getInstance(project).fileIndex
-      val sourceRoot = fileIndex.getSourceRootForFile(directory)
-      if (targetModule == null || sourceRoot == null ||
-        !fileIndex.isInSourceContent(directory) || fileIndex.isInTestSourceContent(directory)
-      ) {
-        Messages.showErrorDialog(project, "Choose a folder inside a production source root.", "Extract Composable")
-        return@chooseFile
-      }
-      val relativePath = VfsUtilCore.getRelativePath(directory, sourceRoot, '/') ?: return@chooseFile
-      targetModuleName = targetModule.name
-      targetPackageName = relativePath.replace('/', '.')
-      targetDirectoryPath = directory.path
-      targetFolderField.text = directory.path
-      updateTargetFilePath()
+  private fun selectTargetFolder(directory: VirtualFile): String {
+    val root = projectDirectory
+    if (root == null || !VfsUtilCore.isAncestor(root, directory, false)) {
+      Messages.showErrorDialog(project, "Choose a folder inside the active project.", "Extract Composable")
+      return targetDirectoryPath
     }
+    val targetModule = ModuleUtilCore.findModuleForFile(directory, project)
+    val fileIndex = ProjectRootManager.getInstance(project).fileIndex
+    val sourceRoot = fileIndex.getSourceRootForFile(directory)
+    if (targetModule == null || sourceRoot == null ||
+      !fileIndex.isInSourceContent(directory) || fileIndex.isInTestSourceContent(directory)
+    ) {
+      Messages.showErrorDialog(project, "Choose a folder inside a production source root.", "Extract Composable")
+      return targetDirectoryPath
+    }
+    val relativePath = VfsUtilCore.getRelativePath(directory, sourceRoot, '/') ?: return targetDirectoryPath
+    targetModuleName = targetModule.name
+    targetPackageName = relativePath.replace('/', '.')
+    targetDirectoryPath = directory.path
+    updateTargetFilePath()
+    return targetDirectoryPath
   }
 
   private fun updateTargetFilePath() {
